@@ -1,5 +1,5 @@
 # helloworld
-This is a sample demo of containerized dotnet solution
+This is a simple demo of containerized dotnet solution
 
 To build and run this image just run:
 
