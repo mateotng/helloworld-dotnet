@@ -1,12 +1,16 @@
-name: SonarCloud
+name: CI/CD Pipeline
 on:
   push:
     branches:
       - main
   pull_request:
     types: [opened, synchronize, reopened]
+
+env:
+  DOCKER_IMAGE: your-dockerhub-username/helloworld-dotnet
+
 jobs:
-  build:
+  build-and-analyze:
     name: Build and analyze
     runs-on: windows-latest
     steps:
@@ -14,16 +18,19 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: 17
-          distribution: 'zulu' # Alternative distribution options are available.
+          distribution: 'zulu'
+      
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+          fetch-depth: 0
+      
       - name: Cache SonarCloud packages
         uses: actions/cache@v4
         with:
           path: ~\sonar\cache
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
+      
       - name: Cache SonarCloud scanner
         id: cache-sonar-scanner
         uses: actions/cache@v4
@@ -31,18 +38,87 @@ jobs:
           path: .\.sonar\scanner
           key: ${{ runner.os }}-sonar-scanner
           restore-keys: ${{ runner.os }}-sonar-scanner
+      
       - name: Install SonarCloud scanner
         if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
         shell: powershell
         run: |
           New-Item -Path .\.sonar\scanner -ItemType Directory
           dotnet tool update dotnet-sonarscanner --tool-path .\.sonar\scanner
+      
       - name: Build and analyze
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         shell: powershell
         run: |
           .\.sonar\scanner\dotnet-sonarscanner begin /k:"mateotng_helloworld-dotnet" /o:"mateotng" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io"
           dotnet build
           .\.sonar\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+
+      - name: Run PowerShell script
+        shell: powershell
+        run: |
+          # Option 1: Print "hola" 50 times
+          1..50 | ForEach-Object { Write-Output "hola" }
+          
+          # Option 2: Create a text file and check if it exists
+          $filePath = "${{ github.workspace }}\test.txt"
+          Set-Content -Path $filePath -Value "This is a test file"
+          if (Test-Path $filePath) {
+            Write-Output "The file exists at: $filePath"
+          } else {
+            Write-Output "The file does not exist"
+          }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: drop
+          path: ${{ github.workspace }}
+
+  docker-build-and-push:
+    needs: build-and-analyze
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Login to DockerHub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: true
+        tags: |
+          ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+          ${{ env.DOCKER_IMAGE }}:latest
+
+  deploy-to-kubernetes:
+    needs: docker-build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+
+    - name: Deploy to Kubernetes
+      run: |
+        # Aquí deberías incluir los comandos para desplegar en tu cluster de Kubernetes
+        # Por ejemplo:
+        # kubectl apply -f k8s-deployment.yaml
+        # kubectl set image deployment/helloworld-dotnet helloworld-dotnet=${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+        echo "Deploying to Kubernetes..."
+        # Reemplaza este echo con tus comandos reales de despliegue
