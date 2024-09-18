@@ -116,9 +116,8 @@ jobs:
 
     - name: Deploy to Kubernetes
       run: |
-        # Aquí deberías incluir los comandos para desplegar en tu cluster de Kubernetes
-        # Por ejemplo:
+        # desplegar en Kubernetes
         # kubectl apply -f k8s-deployment.yaml
         # kubectl set image deployment/helloworld-dotnet helloworld-dotnet=${{ env.DOCKER_IMAGE }}:${{ github.sha }}
         echo "Deploying to Kubernetes..."
-        # Reemplaza este echo con tus comandos reales de despliegue
+
