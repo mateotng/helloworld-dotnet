@@ -12,6 +12,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
     
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
@@ -30,27 +32,14 @@ jobs:
     - name: SonarCloud Scan
       uses: SonarSource/sonarcloud-github-action@master
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      
-    - name: Run PowerShell script
-      shell: pwsh
-      run: |
-        # Option 1: Print "hola" 50 times
-        1..50 | ForEach-Object { Write-Output "hola" }
-        
-        # Option 2: Create a text file and check if it exists
-        $filePath = "${{ github.workspace }}/test.txt"
-        Set-Content -Path $filePath -Value "This is a test file"
-        if (Test-Path $filePath) {
-          Write-Output "The file exists at: $filePath"
-        } else {
-          Write-Output "The file does not exist"
-        }
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v3
       with:
-        name: drop
-        path: ${{ github.workspace }}
-
+        args: >
+          -Dsonar.projectKey=mateotng
+          -Dsonar.organization=mateotng
+          -Dsonar.sources=.
+          -Dsonar.exclusions=**/obj/**,**/*.dll
+          -Dsonar.host.url=https://sonarcloud.io
+      
+    # ... (resto de los pasos permanecen iguales)
