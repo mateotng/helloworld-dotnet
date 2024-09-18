@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '6.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+      
+    - name: Test
+      run: dotnet test --no-restore --verbosity normal
+
+    - name: SonarCloud Scan
+      uses: SonarSource/sonarcloud-github-action@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      
+    - name: Run PowerShell script
+      shell: pwsh
+      run: |
+        # Option 1: Print "hola" 50 times
+        1..50 | ForEach-Object { Write-Output "hola" }
+        
+        # Option 2: Create a text file and check if it exists
+        $filePath = "${{ github.workspace }}/test.txt"
+        Set-Content -Path $filePath -Value "This is a test file"
+        if (Test-Path $filePath) {
+          Write-Output "The file exists at: $filePath"
+        } else {
+          Write-Output "The file does not exist"
+        }
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: drop
+        path: ${{ github.workspace }}
