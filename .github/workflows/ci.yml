@@ -54,14 +54,3 @@ jobs:
         name: drop
         path: ${{ github.workspace }}
 
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: ${{ github.event_name != 'pull_request' }}
-        tags: ${{ secrets.DOCKER_USERNAME }}/helloworld-dotnet:${{ github.sha }}
-
-    - name: Run Docker container
-      run: |
-        docker run -d -p 8080:80 ${{ secrets.DOCKER_USERNAME }}/helloworld-dotnet:${{ github.sha }}
-        
